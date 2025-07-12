@@ -3,7 +3,7 @@ CFLAGS = -Wall -g -fPIC
 SRCS = src/main.c src/client.c src/utils.c
 OBJS = $(SRCS:.c=.o)
 TARGET = client
-LIBDIR = src/dell
+LIBDIR = dell
 LIBNAME = libclient.so
 
 all: $(TARGET) $(LIBDIR)/$(LIBNAME)

@@ -1,51 +1,57 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include "client.h"
-#include "utils.h"
+# 文本或文件上传工具
 
-#define SERVER_IP "127.0.0.1"
-#define SERVER_PORT 8080
+本项目包含一个客户端程序，用于将文本内容或文件通过网络发送到服务器端。
 
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file|text>\n", argv[0]);
-        return EXIT_FAILURE;
-    }
+## 目录结构
 
-    int sockfd;
-    struct sockaddr_in server_addr;
+```
+netfileorstring-client
+├── src
+│   ├── main.c         # 程序入口
+│   ├── client.c       # 客户端核心功能实现
+│   ├── client.h       # 客户端函数声明
+│   ├── utils.c        # 工具函数实现
+│   └── utils.h        # 工具函数声明
+├── Makefile           # 构建脚本
+└── README.md          # 项目说明
+```
 
-    // 创建套接字
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Socket creation failed");
-        return EXIT_FAILURE;
-    }
+## 编译方法
 
-    // 设置服务器地址结构
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(SERVER_PORT);
-    inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr);
+在项目根目录下执行：
 
-    // 连接到服务器
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Connection to server failed");
-        close(sockfd);
-        return EXIT_FAILURE;
-    }
+```
+make
+```
 
-    // 发送文件或文本内容
-    if (is_file(argv[1])) {
-        send_file(sockfd, argv[1]);
-    } else {
-        send_text(sockfd, argv[1]);
-    }
+编译完成后会生成可执行文件 `client`。
 
-    // 关闭套接字
-    close(sockfd);
-    return EXIT_SUCCESS;
-}
+## 使用方法
+
+```
+./client <ip> <port> <file|text> <内容>
+```
+
+- 发送文件示例：
+  ```
+  ./client 127.0.0.1 8888 file ./test.txt
+  ```
+- 发送文本示例：
+  ```
+  ./client 127.0.0.1 8888 text "你好，世界"
+  ```
+
+## 功能说明
+
+- 支持将本地文件内容发送到服务器端指定目录。
+- 支持将文本内容发送到服务器端指定文本文件。
+- 自动处理网络连接和数据传输。
+
+## 依赖环境
+
+- GCC 或兼容的 C 编译器
+- 支持 POSIX Socket 的操作系统（如 Linux、macOS）
+
+## 许可证
+
+本项目采用 MIT 许可证。详情请参见 LICENSE 文件。
