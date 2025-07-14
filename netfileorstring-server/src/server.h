@@ -11,8 +11,8 @@
 #define BUFFER_SIZE 1024
 
 void start_server();
-void handle_client(int client_socket);
 void save_file(const char *filename, const char *data, size_t data_length);
-void handle_client_data(const char *buffer, int length);
+void handle_client_data(int client_socket);
+
 
 #endif // SERVER_H

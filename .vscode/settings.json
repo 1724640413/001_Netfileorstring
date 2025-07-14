@@ -9,6 +9,19 @@
         "utils.h": "c",
         "socket.h": "c",
         "stat.h": "c",
-        "in.h": "c"
+        "in.h": "c",
+        "server.h": "c",
+        "__locale": "c",
+        "string": "c",
+        "string_view": "c",
+        "__string": "c",
+        "ctime": "c",
+        "fcntl.h": "c",
+        "time.h": "c",
+        "stdarg.h": "c",
+        "dirent.h": "c",
+        "errno.h": "c",
+        "array": "c",
+        "vector": "c"
     }
 }

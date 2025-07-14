@@ -88,22 +88,7 @@ void send_file(const char *file_path) {
     }
 
     fclose(file);
-    // 等待服务器响应
-    char response;
-    if (recv(sockfd, &response, 1, 0) != 1) 
-    {
-        perror("接收服务器响应失败");
-    } 
-    else if (response == 0) 
-    {
-        printf("文件发送成功\n");
-        close(sockfd); // 数据发送完成后关闭sockfd
-    } 
-    else 
-    {
-        printf("文件发送失败\n");
-        close(sockfd); // 数据发送失败时关闭sockfd
-    }
+    close(sockfd); // 数据发送完成后关闭sockfd
 }
 
 // 发送文本内容
