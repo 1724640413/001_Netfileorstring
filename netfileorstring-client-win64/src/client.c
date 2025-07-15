@@ -1,61 +1,95 @@
 #include "client.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#define WIN32_LEAN_AND_MEAN
+#define _WIN32_WINNT 0x0600 // È·±£ Windows Vista »ò¸ü¸ß°æ±¾
+#include <winsock2.h>
+#include <ws2tcpip.h>              // Õâ¸öÍ·ÎÄ¼ş°üº¬ inet_pton µÄÉùÃ÷
+#pragma comment(lib, "ws2_32.lib") // Á´½Ó Winsock ¿â
 
-static int sockfd = -1;
-// ç¼“å­˜åŒºå¤§å°
+static SOCKET sockfd = INVALID_SOCKET;
+// »º´æÇø´óĞ¡
 #define BUFFER_SIZE 1024
 
-// è¿æ¥åˆ°æœåŠ¡å™¨
-int connect_to_server(const char *ip, int port) {
+// ³õÊ¼»¯Windows Socket
+static int init_winsock()
+{
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        printf("WSAStartupÊ§°Ü\n");
+        return -1;
+    }
+    return 0;
+}
+
+// Á¬½Óµ½·şÎñÆ÷
+int connect_to_server(const char *ip, int port)
+{
     struct sockaddr_in server_addr;
 
+    // ³õÊ¼»¯WinSock
+    if (init_winsock() != 0)
+    {
+        return -1;
+    }
+
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("åˆ›å»ºå¥—æ¥å­—å¤±è´¥");
+    if (sockfd == INVALID_SOCKET)
+    {
+        printf("´´½¨Ì×½Ó×ÖÊ§°Ü: %d\n", WSAGetLastError());
         return -1;
     }
 
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
-    if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
-        perror("IPåœ°å€æ— æ•ˆ");
-        close(sockfd);
+    if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0)
+    {
+        printf("IPµØÖ·ÎŞĞ§\n");
+        closesocket(sockfd);
+        WSACleanup();
         return -1;
     }
 
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("è¿æ¥æœåŠ¡å™¨å¤±è´¥");
-        close(sockfd);
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == SOCKET_ERROR)
+    {
+        printf("Á¬½Ó·şÎñÆ÷Ê§°Ü: %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        WSACleanup();
         return -1;
     }
 
     return 0;
 }
 
-// å‘é€æ–‡ä»¶å†…å®¹
-void send_file(const char *file_path) {
+// ·¢ËÍÎÄ¼şÄÚÈİ
+void send_file(const char *file_path)
+{
     FILE *file = fopen(file_path, "rb");
-    if (!file) {
-        perror("æ‰“å¼€æ–‡ä»¶å¤±è´¥");
+    if (!file)
+    {
+        printf("´ò¿ªÎÄ¼şÊ§°Ü\n");
         return;
     }
 
-    // è·å–æ–‡ä»¶å
+    // »ñÈ¡ÎÄ¼şÃû - Í¬Ê±´¦ÀíWindowsºÍUnix·ç¸ñµÄÂ·¾¶
     const char *filename = strrchr(file_path, '/');
+    if (!filename)
+    {
+        filename = strrchr(file_path, '\\');
+    }
     filename = filename ? filename + 1 : file_path;
     uint16_t name_len = strlen(filename);
 
-    // è·å–æ–‡ä»¶å†…å®¹é•¿åº¦
+    // »ñÈ¡ÎÄ¼şÄÚÈİ³¤¶È
     fseek(file, 0, SEEK_END);
     uint32_t content_len = ftell(file);
     fseek(file, 0, SEEK_SET);
 
-    // æ„é€ åŒ…å¤´å’Œæ–‡ä»¶å
+    // ¹¹Ôì°üÍ·ºÍÎÄ¼şÃû
     char header[1 + 2 + 4 + 256]; // type + name_len + content_len + filename
     int header_len = 0;
     header[0] = 1; // type
@@ -69,56 +103,70 @@ void send_file(const char *file_path) {
     memcpy(header + header_len, filename, name_len);
     header_len += name_len;
 
-    // å‘é€åŒ…å¤´å’Œæ–‡ä»¶å
-    if (send(sockfd, header, header_len, 0) != header_len) {
-        perror("å‘é€æ–‡ä»¶åŒ…å¤´å¤±è´¥");
+    // ·¢ËÍ°üÍ·ºÍÎÄ¼şÃû
+    if (send(sockfd, header, header_len, 0) != header_len)
+    {
+        printf("·¢ËÍÎÄ¼ş°üÍ·Ê§°Ü: %d\n", WSAGetLastError());
         fclose(file);
-        close(sockfd); // å‘é€å¤±è´¥æ—¶å…³é—­sockfd
+        closesocket(sockfd);
+        WSACleanup();
         return;
     }
 
-    // å‘é€æ–‡ä»¶å†…å®¹
+    // ·¢ËÍÎÄ¼şÄÚÈİ
     char buffer[BUFFER_SIZE];
     size_t bytes_read;
-    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-        if (send(sockfd, buffer, bytes_read, 0) != bytes_read) {
-            perror("å‘é€æ–‡ä»¶å†…å®¹å¤±è´¥");
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+    {
+        if (send(sockfd, buffer, bytes_read, 0) != bytes_read)
+        {
+            printf("·¢ËÍÎÄ¼şÄÚÈİÊ§°Ü: %d\n", WSAGetLastError());
             break;
         }
     }
 
     fclose(file);
-    close(sockfd); // æ•°æ®å‘é€å®Œæˆåå…³é—­sockfd
+    closesocket(sockfd);
+    WSACleanup();
 }
 
-// å‘é€æ–‡æœ¬å†…å®¹
-void send_text(const char *text) {
+// ·¢ËÍÎÄ±¾ÄÚÈİ
+void send_text(const char *text)
+{
     char type = 2;
     uint32_t text_len = strlen(text);
     uint32_t text_len_net = htonl(text_len);
 
-    // å‘é€åŒ…å¤´
-    if (send(sockfd, &type, 1, 0) != 1) {
-        perror("å‘é€æ–‡æœ¬ç±»å‹å¤±è´¥");
-        close(sockfd);
-        return;
-    }
-    if (send(sockfd, &text_len_net, 4, 0) != 4) {
-        perror("å‘é€æ–‡æœ¬é•¿åº¦å¤±è´¥");
-        close(sockfd);
+    // ·¢ËÍ°üÍ·
+    if (send(sockfd, &type, 1, 0) != 1)
+    {
+        printf("·¢ËÍÎÄ±¾ÀàĞÍÊ§°Ü: %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        WSACleanup();
         return;
     }
 
-    // å‘é€æ–‡æœ¬å†…å®¹
+    if (send(sockfd, (const char *)&text_len_net, 4, 0) != 4)
+    {
+        printf("·¢ËÍÎÄ±¾³¤¶ÈÊ§°Ü: %d\n", WSAGetLastError());
+        closesocket(sockfd);
+        WSACleanup();
+        return;
+    }
+
+    // ·¢ËÍÎÄ±¾ÄÚÈİ
     size_t sent = 0;
-    while (sent < text_len) {
+    while (sent < text_len)
+    {
         int n = send(sockfd, text + sent, text_len - sent, 0);
-        if (n <= 0) {
-            perror("å‘é€æ–‡æœ¬å†…å®¹å¤±è´¥");
+        if (n <= 0)
+        {
+            printf("·¢ËÍÎÄ±¾ÄÚÈİÊ§°Ü: %d\n", WSAGetLastError());
             break;
         }
         sent += n;
     }
 
-    close(sockfd); // æ•°æ®å‘é€å®Œæˆåå…³é—­sockfd
+    closesocket(sockfd);
+    WSACleanup();
 }

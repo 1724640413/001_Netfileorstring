@@ -4,9 +4,9 @@
 #include "client.h"
 
 void usage(const char *prog) {
-    printf("ç”¨æ³•: %s <ip> <port> <file|text> <å†…å®¹>\n", prog);
-    printf("ç¤ºä¾‹å‘é€æ–‡ä»¶: %s 127.0.0.1 8888 file ./test.txt\n", prog);
-    printf("ç¤ºä¾‹å‘é€æ–‡æœ¬: %s 127.0.0.1 8888 text \"ä½ å¥½ï¼Œä¸–ç•Œ\"\n", prog);
+    printf("ÓÃ·¨: %s <ip> <port> <file|text> <ÄÚÈİ>\n", prog);
+    printf("Ê¾Àı·¢ËÍÎÄ¼ş: %s 127.0.0.1 8888 file ./test.txt\n", prog);
+    printf("Ê¾Àı·¢ËÍÎÄ±¾: %s 127.0.0.1 8888 text \"ÄãºÃ£¬ÊÀ½ç\"\n", prog);
 }
 
 int main(int argc, char *argv[]) {
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
 
     if (connect_to_server(ip, port) != 0) 
     {
-        fprintf(stderr, "è¿æ¥æœåŠ¡å™¨å¤±è´¥\n");
+        fprintf(stderr, "Á¬½Ó·şÎñÆ÷Ê§°Ü\n");
         return 1;
     }
 
@@ -40,6 +40,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    printf("å‘é€å®Œæˆ\n");
+    printf("·¢ËÍÍê³É\n");
     return 0;
 }

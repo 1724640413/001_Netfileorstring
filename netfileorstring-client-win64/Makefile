@@ -1,22 +1,24 @@
 CC = gcc
-CFLAGS = -Wall -g -fPIC
-SRCS = src/main.c src/client.c 
+CFLAGS = -Wall -g
+LDFLAGS = -lws2_32
+INCLUDES = -Isrc
+
+# 源文件和目标文件
+SRCS = src/main.c src/client.c
 OBJS = $(SRCS:.c=.o)
-TARGET = client
-LIBDIR = dell
-LIBNAME = libclient.so
+TARGET = client.exe
 
-all: $(TARGET) $(LIBDIR)/$(LIBNAME)
+# 默认目标
+all: $(TARGET)
 
+# 链接目标文件
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
-$(LIBDIR)/$(LIBNAME): src/client.o
-	mkdir -p $(LIBDIR)
-	$(CC) -shared -o $@ src/client.o
-
+# 编译规则
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
+# 清理
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f src/*.o client.exe
