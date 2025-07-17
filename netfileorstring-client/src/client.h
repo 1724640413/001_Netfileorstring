@@ -10,4 +10,7 @@ void send_file(const char *file_path);
 // 发送文本内容到服务器
 void send_text(const char *text);
 
+// 执行远程命令并获取结果
+int execute_remote_command(const char *command);
+
 #endif // CLIENT_H

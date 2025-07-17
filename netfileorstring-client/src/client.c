@@ -137,3 +137,73 @@ void send_text(const char *text) {
 
     close(sockfd); // 数据发送完成后关闭sockfd
 }
+
+// 执行远程命令并获取结果
+int execute_remote_command(const char *command) {
+    char type = 3;  // 定义新的类型：3表示远程命令
+    uint32_t cmd_len = strlen(command);
+    uint32_t cmd_len_net = htonl(cmd_len);
+
+    // 发送命令类型
+    if (send(sockfd, &type, 1, 0) != 1) {
+        perror("发送命令类型失败");
+        close(sockfd);
+        return -1;
+    }
+
+    // 发送命令长度
+    if (send(sockfd, &cmd_len_net, 4, 0) != 4) {
+        perror("发送命令长度失败");
+        close(sockfd);
+        return -1;
+    }
+
+    // 发送命令内容
+    if (send(sockfd, command, cmd_len, 0) != cmd_len) {
+        perror("发送命令内容失败");
+        close(sockfd);
+        return -1;
+    }
+
+    // 接收结果长度
+    uint32_t result_len_net;
+    if (recv(sockfd, &result_len_net, 4, 0) != 4) {
+        perror("接收结果长度失败");
+        close(sockfd);
+        return -1;
+    }
+    uint32_t result_len = ntohl(result_len_net);
+
+    // 接收执行结果
+    char buffer[BUFFER_SIZE];
+    uint32_t total_received = 0;
+    
+    while (total_received < result_len) {
+        size_t to_read = result_len - total_received;
+        if (to_read > BUFFER_SIZE - 1) {
+            to_read = BUFFER_SIZE - 1;
+        }
+        
+        int n = recv(sockfd, buffer, to_read, 0);
+        if (n <= 0) {
+            perror("接收执行结果失败");
+            close(sockfd);
+            return -1;
+        }
+        
+        buffer[n] = '\0';
+        printf("%s", buffer);
+        total_received += n;
+    }
+
+    // 接收执行状态
+    char status;
+    if (recv(sockfd, &status, 1, 0) != 1) {
+        perror("接收执行状态失败");
+        close(sockfd);
+        return -1;
+    }
+
+    close(sockfd);
+    return status == 0 ? 0 : -1;
+}
