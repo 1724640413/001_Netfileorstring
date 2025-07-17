@@ -8,7 +8,6 @@ void usage(const char *prog) {
     printf("示例发送文件: %s 127.0.0.1 8888 file ./test.txt\n", prog);
     printf("示例发送文本: %s 127.0.0.1 8888 text \"你好，世界\"\n", prog);
     printf("示例执行命令: %s 127.0.0.1 8888 cmd \"ls -l\"\n", prog);
-    return 1;
 }
 
 int main(int argc, char *argv[]) {

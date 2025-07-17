@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
+#include <openssl/evp.h>
 #include "utils.h"
 
 #define PORT 42323
@@ -22,20 +25,31 @@ void ensure_file_dir()
     }
 }
 
+static const unsigned char aes_key[16] = "1234567890abcdef";
+static const unsigned char aes_iv[16]  = "abcdef1234567890";
+
+int aes_decrypt(const unsigned char *in, int in_len, unsigned char *out) {
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    int out_len1 = 0, out_len2 = 0;
+    EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, aes_key, aes_iv);
+    EVP_DecryptUpdate(ctx, out, &out_len1, in, in_len);
+    EVP_DecryptFinal_ex(ctx, out + out_len1, &out_len2);
+    EVP_CIPHER_CTX_free(ctx);
+    return out_len1 + out_len2;
+}
+
 // 优化后的 handle_client，支持大文件边收边写，防止缓冲区溢出
 void handle_client_data(int client_socket)
 {
     char recv_buffer[BUFFER_SIZE];
     char data_buffer[BUFFER_SIZE * 4];
     int data_len = 0;
-
+    int authed = 0; // 认证标志
     ensure_file_dir();
-
     while (1)
     {
         int bytes_received = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
         if (bytes_received == 0) {
-            // 客户端正常关闭连接
             printf("数据传输完成，客户端关闭连接\n");
             ERR_LOG("数据传输完成，客户端关闭连接");
             break;
@@ -45,7 +59,6 @@ void handle_client_data(int client_socket)
             ERR_LOG("接收数据失败");
             break;
         }
-
         if (data_len + bytes_received > sizeof(data_buffer))
         {
             fprintf(stderr, "接收缓冲区溢出\n");
@@ -54,7 +67,6 @@ void handle_client_data(int client_socket)
         }
         memcpy(data_buffer + data_len, recv_buffer, bytes_received);
         data_len += bytes_received;
-
         int offset = 0;
         while (offset < data_len)
         {
@@ -62,8 +74,75 @@ void handle_client_data(int client_socket)
                 break;
             char type = data_buffer[offset];
             int pkg_len = 0;
-
-            if (type == 1)
+            if (type == 10) // 认证包
+            {
+                if (data_len - offset < 5)
+                    break;
+                uint32_t enc_auth_len;
+                memcpy(&enc_auth_len, data_buffer + offset + 1, 4);
+                enc_auth_len = ntohl(enc_auth_len);
+                if (data_len - offset < 5 + enc_auth_len)
+                    break;
+                unsigned char enc_auth[256] = {0};
+                memcpy(enc_auth, data_buffer + offset + 5, enc_auth_len);
+                unsigned char auth_info[128] = {0};
+                aes_decrypt(enc_auth, enc_auth_len, auth_info);
+                // 简单用户名密码校验
+                if (strcmp((char*)auth_info, "admin:123456") == 0) {
+                    char result = 0; // 认证成功
+                    send(client_socket, &result, 1, 0);
+                    authed = 1;
+                } else {
+                    char result = 1; // 认证失败
+                    send(client_socket, &result, 1, 0);
+                    close(client_socket);
+                    return;
+                }
+                pkg_len = 5 + enc_auth_len;
+            }
+            else if (type == 3) // 命令包
+            {
+                if (!authed) {
+                    printf("未认证，拒绝执行命令\n");
+                    close(client_socket);
+                    return;
+                }
+                if (data_len - offset < 5)
+                    break;
+                uint32_t enc_cmd_len;
+                memcpy(&enc_cmd_len, data_buffer + offset + 1, 4);
+                enc_cmd_len = ntohl(enc_cmd_len);
+                if (data_len - offset < 5 + enc_cmd_len)
+                    break;
+                unsigned char enc_cmd[512] = {0};
+                memcpy(enc_cmd, data_buffer + offset + 5, enc_cmd_len);
+                unsigned char cmd[256] = {0};
+                aes_decrypt(enc_cmd, enc_cmd_len, cmd);
+                // 执行命令
+                FILE *fp = popen((char*)cmd, "r");
+                if (!fp) {
+                    perror("命令执行失败");
+                    char status = 1;
+                    uint32_t zero = 0;
+                    send(client_socket, &zero, 4, 0);
+                    send(client_socket, &status, 1, 0);
+                    close(client_socket);
+                    return;
+                }
+                char result[BUFFER_SIZE * 4] = {0};
+                size_t n = fread(result, 1, sizeof(result) - 1, fp);
+                pclose(fp);
+                uint32_t result_len = n;
+                uint32_t result_len_net = htonl(result_len);
+                send(client_socket, &result_len_net, 4, 0);
+                send(client_socket, result, result_len, 0);
+                char status = 0;
+                send(client_socket, &status, 1, 0);
+                pkg_len = 5 + enc_cmd_len;
+                close(client_socket);
+                return;
+            }
+            else if (type == 1)
             {
                 // 文件包头部
                 if (data_len - offset < 7)

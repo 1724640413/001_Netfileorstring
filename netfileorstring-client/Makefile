@@ -9,11 +9,11 @@ LIBNAME = libclient.so
 all: $(TARGET) $(LIBDIR)/$(LIBNAME)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) -lssl -lcrypto
 
 $(LIBDIR)/$(LIBNAME): src/client.o
 	mkdir -p $(LIBDIR)
-	$(CC) -shared -o $@ src/client.o
+	$(CC) -shared -o $@ src/client.o -lssl -lcrypto
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

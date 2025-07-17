@@ -1,20 +1,20 @@
 CC = gcc
-CFLAGS = -Wall -g
-SRC = src/main.c src/server.c src/utils.c
+CFLAGS = -Wall -g -fPIC
+SRCS = src/main.c src/server.c src/utils.c
 # SRCS = $(wildcard src/*.c) # 如果需要自动查找所有源
-OBJ = $(SRC:.c=.o)
+OBJS = $(SRCS:.c=.o)
 TARGET = netfileorstring-server
 
 all: $(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CC) -o $@ $^
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) -lssl -lcrypto
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f $(OBJS) $(TARGET)
 	rm -f dell/libserver.so
 	rm -f /usr/local/include/netfileorstring-server.h
 	rm -rf /usr/local/bin/netfileorstring-server

@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 
-#define PORT 42323
-#define BUFFER_SIZE 1024
 
 void start_server();
 void save_file(const char *filename, const char *data, size_t data_length);
