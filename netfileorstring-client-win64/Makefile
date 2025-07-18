@@ -1,7 +1,7 @@
 CC = gcc
-CFLAGS = -Wall -g
-LDFLAGS = -lws2_32
-INCLUDES = -Isrc
+CFLAGS = -Wall -g -D_WIN32_WINNT=0x0600
+LDFLAGS = -lws2_32 -L"E:/001 Monitor/005MSYS2/mingw64/lib" -lssl -lcrypto
+INCLUDES = -Isrc -I"E:/001 Monitor/005MSYS2/mingw64/include"
 
 # 源文件和目标文件
 SRCS = src/main.c src/client.c

@@ -194,7 +194,7 @@ char *sysUsecTime(int flag, char *result)
     }
     else if (flag == 2)
     {
-        strftime(result, 11, "%Y-%m-%d%", now_tm);
+        strftime(result, 11, "%Y-%m-%d%%", now_tm);
     }
     else
     {

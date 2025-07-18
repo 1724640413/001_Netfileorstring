@@ -62,8 +62,85 @@ void handle_client_data(int client_socket)
                 break;
             char type = data_buffer[offset];
             int pkg_len = 0;
+<<<<<<< Updated upstream
 
             if (type == 1)
+=======
+            if (type == 10) // 认证包
+            {
+                if (data_len - offset < 5)
+                    break;
+                uint32_t enc_auth_len;
+                memcpy(&enc_auth_len, data_buffer + offset + 1, 4);
+                enc_auth_len = ntohl(enc_auth_len);
+                if (data_len - offset < 5 + enc_auth_len)
+                    break;
+                unsigned char enc_auth[256] = {0};
+                memcpy(enc_auth, data_buffer + offset + 5, enc_auth_len);
+                unsigned char auth_info[128] = {0};
+                int auth_info_len = aes_decrypt(enc_auth, enc_auth_len, auth_info);
+                auth_info[auth_info_len] = '\0'; // 保证字符串结尾
+                
+                // 调试信息解密后的认证信息
+                //printf("解密后认证信息: [%s]\n", auth_info);
+                
+                // 简单用户名密码校验
+                if (strcmp((char*)auth_info, "admin:123456") == 0) {
+                    char result = 0; // 认证成功
+                    send(client_socket, &result, 1, 0);
+                    authed = 1;
+                } else {
+                    char result = 1; // 认证失败
+                    send(client_socket, &result, 1, 0);
+                    close(client_socket);
+                    return;
+                }
+                pkg_len = 5 + enc_auth_len;
+            }
+            else if (type == 3) // 命令包
+            {
+                if (!authed) {
+                    printf("未认证，拒绝执行命令\n");
+                    close(client_socket);
+                    return;
+                }
+                if (data_len - offset < 5)
+                    break;
+                uint32_t enc_cmd_len;
+                memcpy(&enc_cmd_len, data_buffer + offset + 1, 4);
+                enc_cmd_len = ntohl(enc_cmd_len);
+                if (data_len - offset < 5 + enc_cmd_len)
+                    break;
+                unsigned char enc_cmd[512] = {0};
+                memcpy(enc_cmd, data_buffer + offset + 5, enc_cmd_len);
+                unsigned char cmd[256] = {0};
+                aes_decrypt(enc_cmd, enc_cmd_len, cmd);
+                // 执行命令
+                FILE *fp = popen((char*)cmd, "r");
+                if (!fp) {
+                    perror("命令执行失败");
+                    char status = 1;
+                    uint32_t zero = 0;
+                    send(client_socket, &zero, 4, 0);
+                    send(client_socket, &status, 1, 0);
+                    close(client_socket);
+                    return;
+                }
+                char result[BUFFER_SIZE * 4] = {0};
+                size_t n = fread(result, 1, sizeof(result) - 1, fp);
+                pclose(fp);
+                uint32_t result_len = n;
+                uint32_t result_len_net = htonl(result_len);
+                send(client_socket, &result_len_net, 4, 0);
+                send(client_socket, result, result_len, 0);
+                char status = 0;
+                send(client_socket, &status, 1, 0);
+                pkg_len = 5 + enc_cmd_len;
+                close(client_socket);
+                return;
+            }
+            else if (type == 1)
+>>>>>>> Stashed changes
             {
                 // 文件包头部
                 if (data_len - offset < 7)
