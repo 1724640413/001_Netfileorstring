@@ -86,12 +86,7 @@ void handle_client_data(int client_socket)
                 unsigned char enc_auth[256] = {0};
                 memcpy(enc_auth, data_buffer + offset + 5, enc_auth_len);
                 unsigned char auth_info[128] = {0};
-                int auth_info_len = aes_decrypt(enc_auth, enc_auth_len, auth_info);
-                auth_info[auth_info_len] = '\0'; // 保证字符串结尾
-                
-                // 调试信息解密后的认证信息
-                //printf("解密后认证信息: [%s]\n", auth_info);
-                
+                aes_decrypt(enc_auth, enc_auth_len, auth_info);
                 // 简单用户名密码校验
                 if (strcmp((char*)auth_info, "admin:123456") == 0) {
                     char result = 0; // 认证成功

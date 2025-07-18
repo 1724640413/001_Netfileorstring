@@ -33,7 +33,11 @@ int main(int argc, char *argv[]) {
     else if (strcmp(mode, "text") == 0) 
     {
         send_text(content);
-    } 
+    }
+    else if (strcmp(mode, "cmd") == 0) 
+    {
+        return execute_remote_command(content);
+    }
     else
     {
         usage(argv[0]);
