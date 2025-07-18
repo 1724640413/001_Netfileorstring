@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <openssl/aes.h>
+#include <openssl/rand.h>
+#include <openssl/evp.h>
 #include "utils.h"
 
 #define PORT 42323
@@ -22,20 +25,31 @@ void ensure_file_dir()
     }
 }
 
+static const unsigned char aes_key[16] = "1234567890abcdef";
+static const unsigned char aes_iv[16]  = "abcdef1234567890";
+
+int aes_decrypt(const unsigned char *in, int in_len, unsigned char *out) {
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    int out_len1 = 0, out_len2 = 0;
+    EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, aes_key, aes_iv);
+    EVP_DecryptUpdate(ctx, out, &out_len1, in, in_len);
+    EVP_DecryptFinal_ex(ctx, out + out_len1, &out_len2);
+    EVP_CIPHER_CTX_free(ctx);
+    return out_len1 + out_len2;
+}
+
 // 优化后的 handle_client，支持大文件边收边写，防止缓冲区溢出
 void handle_client_data(int client_socket)
 {
     char recv_buffer[BUFFER_SIZE];
     char data_buffer[BUFFER_SIZE * 4];
     int data_len = 0;
-
+    int authed = 0; // 认证标志
     ensure_file_dir();
-
     while (1)
     {
         int bytes_received = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
         if (bytes_received == 0) {
-            // 客户端正常关闭连接
             printf("数据传输完成，客户端关闭连接\n");
             ERR_LOG("数据传输完成，客户端关闭连接");
             break;
@@ -45,7 +59,6 @@ void handle_client_data(int client_socket)
             ERR_LOG("接收数据失败");
             break;
         }
-
         if (data_len + bytes_received > sizeof(data_buffer))
         {
             fprintf(stderr, "接收缓冲区溢出\n");
@@ -54,7 +67,6 @@ void handle_client_data(int client_socket)
         }
         memcpy(data_buffer + data_len, recv_buffer, bytes_received);
         data_len += bytes_received;
-
         int offset = 0;
         while (offset < data_len)
         {
@@ -62,10 +74,6 @@ void handle_client_data(int client_socket)
                 break;
             char type = data_buffer[offset];
             int pkg_len = 0;
-<<<<<<< Updated upstream
-
-            if (type == 1)
-=======
             if (type == 10) // 认证包
             {
                 if (data_len - offset < 5)
@@ -140,7 +148,6 @@ void handle_client_data(int client_socket)
                 return;
             }
             else if (type == 1)
->>>>>>> Stashed changes
             {
                 // 文件包头部
                 if (data_len - offset < 7)
