@@ -56,9 +56,22 @@ int main() {
             exit(EXIT_FAILURE);
         }
 
-        // 直接交给 handle_client_data 处理整个会话
-        handle_client_data(new_socket);
-        // handle_client_data 内部会 close(new_socket)
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            close(new_socket);
+            continue;
+        } else if (pid == 0) {
+            // 子进程
+            close(server_fd); // 子进程不需要监听socket
+            printf("进入 handle_client_data\n");
+            handle_client_data(new_socket);
+            printf("退出 handle_client_data\n");
+            exit(0);
+        } else {
+            // 父进程
+            close(new_socket); // 父进程不处理该连接
+        }
     }
 
     return 0;

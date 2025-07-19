@@ -180,6 +180,7 @@ int execute_remote_command(const char *command) {
         perror("接收认证结果失败"); close(sockfd); return -1;
     }
     if (auth_result != 0) {
+        printf("认证失败数据：%d\n", auth_result);
         fprintf(stderr, "认证失败\n"); close(sockfd); return -1;
     }
     // 2. 发送加密命令包
