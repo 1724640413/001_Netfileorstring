@@ -1,5 +1,9 @@
 CC = gcc
 CFLAGS = -Wall -g -fPIC
+CFLAGSM32 = -m32 -static 
+LIBIN = -I/opt/openssl/include -L/opt/openssl/lib
+LIBINM32 = -lssl -lcrypto -ldl -pthread
+
 SRCS = src/main.c src/server.c src/utils.c
 # SRCS = $(wildcard src/*.c) # 如果需要自动查找所有源
 OBJS = $(SRCS:.c=.o)
@@ -12,6 +16,10 @@ $(TARGET): $(OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+m32:
+	$(CC) $(CFLAGSM32) $(LIBIN) -o $(TARGET) $(SRCS) $(LIBINM32)
+	#gcc -m32 -static -I/opt/openssl-static/include -L/opt/openssl-static/lib -o netfileorstring-server src/*.c -lssl -lcrypto -ldl -pthread
 
 clean:
 	rm -f $(OBJS) $(TARGET)
